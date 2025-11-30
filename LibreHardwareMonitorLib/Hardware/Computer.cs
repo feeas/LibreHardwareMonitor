@@ -695,6 +695,8 @@ public class Computer : IComputer
     }
 
 
+
+
     private int _CPUPowerIndex;
     private int _CPUClockMaxNumber;
     private int _CPUClockMinIndex;
@@ -704,9 +706,9 @@ public class Computer : IComputer
     // private int _iGPUPowerIndex;
     private IComputer _Computer;
     private string _D3DDisplayDeviceIdentifier;
-    private long _gpuNodeUsagePrevValue;
-    private DateTime _gpuNodeUsagePrevTick;
-    private D3DDisplayDevice.D3DDeviceInfo _deviceInfo;
+    // private long _gpuNodeUsagePrevValue;
+    // private DateTime _gpuNodeUsagePrevTick;
+    // private D3DDisplayDevice.D3DDeviceInfo _deviceInfo;
 
 
 
@@ -723,7 +725,7 @@ public class Computer : IComputer
     private int _VramUsedIndex;
     private int _VramFreeIndex;
     private int _VramTotalIndex;
-    private float _VramTotal;
+    // private float _VramTotal;
     private int _GPUUtilizationIndex;
 
 
@@ -1639,7 +1641,7 @@ public class Computer : IComputer
     {
         return _groups[0].GetReport();
     }
-
+    
     public string GetGPUInfo()
     {
         return _Computer.Hardware[1].GetReport();
@@ -1650,7 +1652,7 @@ public class Computer : IComputer
         foreach (IGroup group in _groups)
         {
             String Report = group.GetReport();
-            if (Report.Contains("Intel GPU (D3D)"))
+            if(Report.Contains("Intel GPU (D3D)"))
             {
                 return Report;
             }
@@ -1659,6 +1661,5 @@ public class Computer : IComputer
     }
 
 
-
-
 }
+
