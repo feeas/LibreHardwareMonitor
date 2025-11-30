@@ -693,4 +693,969 @@ public class Computer : IComputer
         public void Remove(string name)
         { }
     }
+
+
+    private int _CPUPowerIndex;
+    private int _CPUClockMaxNumber;
+    private int _CPUClockMinIndex;
+    private int _CPUTemperatureIndex;
+    private int _CPUUtilizationIndex;
+    private int _GPUNameIndex;
+    // private int _iGPUPowerIndex;
+    private IComputer _Computer;
+    private string _D3DDisplayDeviceIdentifier;
+    private long _gpuNodeUsagePrevValue;
+    private DateTime _gpuNodeUsagePrevTick;
+    private D3DDisplayDevice.D3DDeviceInfo _deviceInfo;
+
+
+
+
+    public void InitAhk(IComputer Computer)
+    {
+        _Computer = Computer;
+    }
+
+
+    private int _GPUClockIndex;
+    private int _GPUTemperatureIndex;
+    private int _GPUPowerIndex;
+    private int _VramUsedIndex;
+    private int _VramFreeIndex;
+    private int _VramTotalIndex;
+    private float _VramTotal;
+    private int _GPUUtilizationIndex;
+
+
+
+    private int _StorageTemperatureIndex;
+    private float[] _AllStorageData;
+    private int _StorageReadIndex;
+    private int _StorageWriteIndex;
+    public int InitGetAllStorageData()
+    {
+        _AllStorageData = new float[3];
+        GetStorageTemperatureIndex();
+        GetStorageReadIndex();
+        GetStorageWriteIndex();
+
+        return 0;
+    }
+    public float[] GetAllStorageData(int StorageIndex)
+    {
+        _Computer.Hardware[StorageIndex].Update();
+        _AllStorageData[0] = (float)_Computer.Hardware[StorageIndex].Sensors[_StorageTemperatureIndex].Value;
+        _AllStorageData[1] = (float)_Computer.Hardware[StorageIndex].Sensors[_StorageReadIndex].Value;
+        _AllStorageData[2] = (float)_Computer.Hardware[StorageIndex].Sensors[_StorageWriteIndex].Value;
+        return _AllStorageData;
+    }
+
+    public int GetStorageTemperatureIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if (hardware.HardwareType == HardwareType.Storage)
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        //找到温度传感器
+                        if (hardware.Sensors[j].SensorType == SensorType.Temperature)
+                        {
+                            if (hardware.Sensors[j].Name == "Temperature")
+                            {
+                                _StorageTemperatureIndex = j;
+                                return j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public int GetStorageReadIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if (hardware.HardwareType == HardwareType.Storage)
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        //找到温度传感器
+                        if (hardware.Sensors[j].SensorType == SensorType.Throughput)
+                        {
+                            if (hardware.Sensors[j].Name == "Read Rate")
+                            {
+                                _StorageReadIndex = j;
+                                return j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public int GetStorageWriteIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if (hardware.HardwareType == HardwareType.Storage)
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        //找到温度传感器
+                        if (hardware.Sensors[j].SensorType == SensorType.Throughput)
+                        {
+                            if (hardware.Sensors[j].Name == "Write Rate")
+                            {
+                                _StorageWriteIndex = j;
+                                return j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+
+    // private float[] _AllCpu_IGPU_Data;
+    public int InitGetAllCpuData(IComputer Computer)
+    {
+        // _AllCpu_IGPU_Data = new float[4];
+        // _AllCpu_IGPU_Data = new float[5];
+        _CPUClockMaxNumber = GetCPUClockIndex();
+        _CPUTemperatureIndex = GetCPUTemperatureIndex();
+        _CPUPowerIndex = GetCPUPowerIndex();
+        _CPUUtilizationIndex = GetCPUUtilizationIndex();
+        // GetiGPUPowerIndex();
+        _Computer = Computer;
+        return 0;
+    }
+
+    private float[] _AllCpu_GPU_Data;
+    public int InitGetAllGpuData()
+    {
+        _AllCpu_GPU_Data = new float[9];
+        _GPUPowerIndex = GetGPUPowerIndex();
+        _GPUUtilizationIndex = GetGPUUtilizationIndex();
+        // GetVramUsedIndex();
+        _VramFreeIndex = GetVramFreeIndex();
+        // GetVramTotalIndex();
+        _GPUClockIndex = GetGPUClockIndex();
+        _GPUTemperatureIndex = GetGPUTemperatureIndex();
+        // _VramTotal =(int)_Computer.Hardware[1].Sensors[_VramTotalIndex].Value;
+        return 0;
+    }
+
+    private float[] _AllCpu_IGPU_Data;
+    public int InitGetAlliGpuData()
+    {
+        _AllCpu_IGPU_Data = new float[7];
+        _Computer.Hardware[1].Update();
+
+        _GPUPowerIndex = GetGPUPowerIndex();
+        _GPUUtilizationIndex = GetGPUUtilizationIndex();
+        // GetVramUsedIndex();
+        _VramFreeIndex = GetVramFreeIndex();
+        // _VramTotal =GetGpuSharedLimit(GetD3DDisplayDeviceIdentifier(0))/1048576;
+
+        return 0;
+    }
+
+    public float[] GetAllCpu_IGPU_Data()
+    {
+        _Computer.Hardware[0].Update();
+        _AllCpu_IGPU_Data[0] = GetMaxCPUClock();
+        _AllCpu_IGPU_Data[1] = (float)_Computer.Hardware[0].Sensors[_CPUTemperatureIndex].Value;
+        _AllCpu_IGPU_Data[2] = (float)_Computer.Hardware[0].Sensors[_CPUPowerIndex].Value;
+        _AllCpu_IGPU_Data[3] = (float)_Computer.Hardware[0].Sensors[_CPUUtilizationIndex].Value;
+        _Computer.Hardware[1].Update();
+        _AllCpu_IGPU_Data[4] = (float)_Computer.Hardware[1].Sensors[_GPUPowerIndex].Value;
+        _AllCpu_IGPU_Data[5] = (float)_Computer.Hardware[1].Sensors[_GPUUtilizationIndex].Value;
+        _AllCpu_IGPU_Data[6] = (float)_Computer.Hardware[1].Sensors[_VramFreeIndex].Value;
+        // _AllCpu_IGPU_Data[6] = (float)(_VramTotal-_Computer.Hardware[1].Sensors[_VramUsedIndex].Value);
+        // if (_iGPUPowerIndex != -1)
+        // {
+        //     _AllCpu_IGPU_Data[4] = (float)_Computer.Hardware[0].Sensors[_iGPUPowerIndex].Value;
+        // }
+
+
+        return _AllCpu_IGPU_Data;
+    }
+
+    public float GetMaxCPUClock()
+    {
+        float MaxClock = 0;
+        for (int i = 0; i < _CPUClockMaxNumber; i++)
+        {
+            if (MaxClock < _Computer.Hardware[0].Sensors[_CPUClockMinIndex + i].Value)
+            {
+                MaxClock = (float)_Computer.Hardware[0].Sensors[_CPUClockMinIndex + i].Value;
+            }
+        }
+        return MaxClock;
+    }
+
+
+    private float[] _AllCpu_GPU_Data_Safe;
+    public int InitGetAllGpuData_Safe()
+    {
+
+        // if(_CPUTemperatureIndex==-1){
+        //     _CPUTemperatureIndex=GetCPUTemperatureIndex_Safe();
+        // }
+        _AllCpu_GPU_Data_Safe = new float[9];
+        _GPUPowerIndex = GetGPUPowerIndex();
+        _GPUUtilizationIndex = GetGPUUtilizationIndex();
+        // GetVramUsedIndex();
+        _VramFreeIndex = GetVramFreeIndex();
+        // GetVramTotalIndex();
+        _GPUClockIndex = GetGPUClockIndex();
+        _GPUTemperatureIndex = GetGPUTemperatureIndex();
+        return 0;
+    }
+    public float[] GetAllCpu_GPU_Data_Safe()
+    {
+        _Computer.Hardware[0].Update();
+        if (_CPUClockMinIndex == -1)
+        {
+            _AllCpu_GPU_Data_Safe[0] = -1000;
+        }
+        else
+        {
+            _AllCpu_GPU_Data_Safe[0] = GetMaxCPUClock();
+        }
+
+        if (_CPUTemperatureIndex == -1)
+        {
+            _AllCpu_GPU_Data_Safe[1] = -1;
+        }
+        else
+        {
+            _AllCpu_GPU_Data_Safe[1] = (float)_Computer.Hardware[0].Sensors[_CPUTemperatureIndex].Value;
+        }
+
+        if (_CPUPowerIndex == -1)
+        {
+            _AllCpu_GPU_Data_Safe[2] = -1;
+        }
+        else
+        {
+            _AllCpu_GPU_Data_Safe[2] = (float)_Computer.Hardware[0].Sensors[_CPUPowerIndex].Value;
+        }
+
+        if (_CPUUtilizationIndex == -1)
+        {
+            _AllCpu_GPU_Data_Safe[3] = -1;
+        }
+        else
+        {
+            _AllCpu_GPU_Data_Safe[3] = (float)_Computer.Hardware[0].Sensors[_CPUUtilizationIndex].Value;
+        }
+
+
+        if (_GPUNameIndex == -1)
+        {
+            for (int i = 4; i < 9; i++)
+            {
+                _AllCpu_GPU_Data_Safe[i] = -1;
+            }
+            _AllCpu_GPU_Data_Safe[6] = -1024;
+            _AllCpu_GPU_Data_Safe[7] = -1000;
+        }
+        else
+        {
+            _Computer.Hardware[1].Update();
+            if (_GPUPowerIndex == -1)
+            {
+                _AllCpu_GPU_Data_Safe[4] = -1;
+            }
+            else
+            {
+                _AllCpu_GPU_Data_Safe[4] = (float)_Computer.Hardware[1].Sensors[_GPUPowerIndex].Value;
+            }
+            if (_GPUUtilizationIndex == -1)
+            {
+                _AllCpu_GPU_Data_Safe[5] = -1;
+            }
+            else
+            {
+                _AllCpu_GPU_Data_Safe[5] = (float)_Computer.Hardware[1].Sensors[_GPUUtilizationIndex].Value;
+            }
+            if (_VramFreeIndex == -1)
+            {
+                _AllCpu_GPU_Data_Safe[6] = -1024;
+            }
+            else
+            {
+                _AllCpu_GPU_Data_Safe[6] = (float)_Computer.Hardware[1].Sensors[_VramFreeIndex].Value;
+            }
+            if (_GPUClockIndex == -1)
+            {
+                _AllCpu_GPU_Data_Safe[7] = -1;
+            }
+            else
+            {
+                _AllCpu_GPU_Data_Safe[7] = (float)_Computer.Hardware[1].Sensors[_GPUClockIndex].Value;
+            }
+            if (_GPUTemperatureIndex == -1)
+            {
+                _AllCpu_GPU_Data_Safe[8] = -1;
+            }
+            else
+            {
+                _AllCpu_GPU_Data_Safe[8] = (float)_Computer.Hardware[1].Sensors[_GPUTemperatureIndex].Value;
+            }
+        }
+        return _AllCpu_GPU_Data_Safe;
+    }
+
+    public float[] GetAllCpu_GPU_Data()
+    {
+        _Computer.Hardware[0].Update();
+
+        _AllCpu_GPU_Data[0] = GetMaxCPUClock();
+        _AllCpu_GPU_Data[1] = (float)_Computer.Hardware[0].Sensors[_CPUTemperatureIndex].Value;
+        _AllCpu_GPU_Data[2] = (float)_Computer.Hardware[0].Sensors[_CPUPowerIndex].Value;
+        _AllCpu_GPU_Data[3] = (float)_Computer.Hardware[0].Sensors[_CPUUtilizationIndex].Value;
+        _Computer.Hardware[1].Update();
+        _AllCpu_GPU_Data[4] = (float)_Computer.Hardware[1].Sensors[_GPUPowerIndex].Value;
+        _AllCpu_GPU_Data[5] = (float)_Computer.Hardware[1].Sensors[_GPUUtilizationIndex].Value;
+        // _AllCpu_GPU_Data[6] = (float)_Computer.Hardware[1].Sensors[_VramUsedIndex].Value;
+        _AllCpu_GPU_Data[6] = (float)_Computer.Hardware[1].Sensors[_VramFreeIndex].Value;
+        _AllCpu_GPU_Data[7] = (float)_Computer.Hardware[1].Sensors[_GPUClockIndex].Value;
+        _AllCpu_GPU_Data[8] = (float)_Computer.Hardware[1].Sensors[_GPUTemperatureIndex].Value;
+        // if (_iGPUPowerIndex != -1)
+        // {
+        //     _AllCpu_IGPU_Data[4] = (float)_Computer.Hardware[0].Sensors[_iGPUPowerIndex].Value;
+        // }
+
+
+        return _AllCpu_GPU_Data;
+    }
+    // public int AddNullSensor(int Index) {
+    //     int NewLength = _Computer.Hardware[Index].Sensors.Length+1;
+    //     // Array.Resize(ref _Computer.Hardware[Index].Sensors, NewLength);
+    //     _Computer.Hardware[Index].Sensors[NewLength].Value = -1;
+    //     return NewLength;
+    // }
+
+
+
+
+    // private float[] _AlliGpuData;
+    // public int InitGetAlliGpuData()
+    // {
+    //     _AlliGpuData = new float[2];
+    //     D3DDisplayDevice.GetDeviceInfoByIdentifier(_D3DDisplayDeviceIdentifier, out D3DDisplayDevice.D3DDeviceInfo _deviceInfo);
+    //     D3DDisplayDevice.D3DDeviceNodeInfo node = _deviceInfo.Nodes[0];
+    //     _gpuNodeUsagePrevValue = node.RunningTime;
+    //     _gpuNodeUsagePrevTick = node.QueryTime;
+    //     return 1;
+    // }
+    // public float[] GetAlliGpuData()
+    // {
+    //     D3DDisplayDevice.GetDeviceInfoByIdentifier(_D3DDisplayDeviceIdentifier, out D3DDisplayDevice.D3DDeviceInfo _deviceInfo);
+    //     _AlliGpuData[0] = _deviceInfo.GpuSharedUsed;
+
+    //     D3DDisplayDevice.D3DDeviceNodeInfo node = _deviceInfo.Nodes[0];
+    //     long runningTimeDiff = node.RunningTime - _gpuNodeUsagePrevValue;
+    //     long timeDiff = node.QueryTime.Ticks - _gpuNodeUsagePrevTick.Ticks;
+    //     float gpuNodeUsage = 100f * runningTimeDiff / timeDiff;
+    //     _gpuNodeUsagePrevValue = node.RunningTime;
+    //     _gpuNodeUsagePrevTick = node.QueryTime;
+    //     _AlliGpuData[1] = gpuNodeUsage;
+    //     return _AlliGpuData;
+    // }
+
+
+
+
+
+    // public float[] GetAllGpuData()
+    // {
+    //     _Computer.Hardware[1].Update();
+    //     _AllGpuData[0] = (float)_Computer.Hardware[1].Sensors[_GPUClockIndex].Value;
+    //     _AllGpuData[1] = (float)_Computer.Hardware[1].Sensors[_GPUTemperatureIndex].Value;
+    //     _AllGpuData[2] = (float)_Computer.Hardware[1].Sensors[_GPUPowerIndex].Value;
+    //     _AllGpuData[3] = (float)_Computer.Hardware[1].Sensors[_VramUsedIndex].Value;
+    //     _AllGpuData[4] = (float)_Computer.Hardware[1].Sensors[_GPUUtilizationIndex].Value;
+
+    //     return _AllGpuData;
+    // }
+
+    // public float[] GetAlliGpuData()
+    // {
+    //     _Computer.Hardware[1].Update();
+    //     _AlliGpuData[0] = (float)_Computer.Hardware[1].Sensors[_GPUPowerIndex].Value;
+    //     _AlliGpuData[1] = (float)_Computer.Hardware[1].Sensors[_VramUsedIndex].Value;
+    //     _AlliGpuData[2] = (float)_Computer.Hardware[1].Sensors[_GPUUtilizationIndex].Value;
+
+    //     return _AlliGpuData;
+    // }
+
+    public string textahk()
+    {
+        using StringWriter w = new(CultureInfo.InvariantCulture);
+        w.WriteLine(_Computer.Hardware[1].HardwareType);
+        return w.ToString();
+    }
+    public string GetGPUName()
+    {
+        using StringWriter w = new(CultureInfo.InvariantCulture);
+        _GPUNameIndex = GetGPUNameIndex();
+        if (_GPUNameIndex == -1)
+        {
+            w.WriteLine("-1");
+        }
+        else
+        {
+            w.WriteLine(_Computer.Hardware[_GPUNameIndex].HardwareType);
+        }
+        return w.ToString();
+    }
+
+    public int GetGPUNameIndex()
+    {
+        int NameIndex = 0;
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if ((hardware.HardwareType == HardwareType.GpuNvidia) || (hardware.HardwareType == HardwareType.GpuIntel) || (hardware.HardwareType == HardwareType.GpuAmd))
+                {
+                    return NameIndex;
+                }
+                NameIndex++;
+            }
+        }
+        return -1;
+    }
+
+    // public int GetiGPUPowerIndex()
+    // {
+    //     foreach (IGroup group in _groups)
+    //     {
+    //         foreach (IHardware hardware in group.Hardware)
+    //         {
+    //             //w.WriteLine(hardware.Identifier);
+    //             if (hardware.HardwareType == HardwareType.Cpu)
+    //             {
+    //                 for (int j = 0; j < hardware.Sensors.Length; j++)
+    //                 {
+    //                     //找到温度传感器
+
+    //                     if (hardware.Sensors[j].Name == "CPU Graphics")
+    //                     {
+    //                         if (hardware.Sensors[j].SensorType == SensorType.Power)
+    //                         {
+    //                             _iGPUPowerIndex = j;
+    //                             return j;
+    //                         }
+
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     return -1;
+    // }
+
+
+
+
+
+
+    public float GetCPUPower(IComputer Computer, int CPUPowerIndex)
+    {
+        return (float)Computer.Hardware[0].Sensors[CPUPowerIndex].Value;
+    }
+    public int GetCPUPowerIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if (hardware.HardwareType == HardwareType.Cpu)
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        //找到温度传感器
+
+                        if (hardware.Sensors[j].Name.Contains("Package"))
+                        {
+                            if (hardware.Sensors[j].SensorType == SensorType.Power)
+                            {
+                                return j;
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public int GetCPUClockIndex()
+    {
+        int CPUClockMaxNumber = 0;
+        _CPUClockMinIndex = -1;
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if (hardware.HardwareType == HardwareType.Cpu)
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        if (hardware.Sensors[j].SensorType == SensorType.Clock)
+                        {
+                            if (hardware.Sensors[j].Name.Contains("Core"))
+                            {
+                                if (_CPUClockMinIndex == -1)
+                                {
+                                    _CPUClockMinIndex = j;
+                                }
+                                CPUClockMaxNumber = CPUClockMaxNumber + 1;
+                            }
+                        }
+                    }
+                    if (CPUClockMaxNumber != 0)
+                    {
+                        return CPUClockMaxNumber;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+    public int UpdateCPUData(IComputer Computer)
+    {
+        Computer.Hardware[0].Update();
+        return 1;
+    }
+    public float GetCPUTemperature(IComputer Computer, int CPUTemperatureIndex)
+    {
+        return (float)Computer.Hardware[0].Sensors[CPUTemperatureIndex].Value;
+    }
+    public int GetCPUTemperatureIndex()
+    {
+        int CPUTemperatureIndex_Safe = -1;
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if (hardware.HardwareType == HardwareType.Cpu)
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        //找到温度传感器
+                        if (hardware.Sensors[j].SensorType == SensorType.Temperature)
+                        {
+                            if ((hardware.Sensors[j].Name == "CPU Package") || (hardware.Sensors[j].Name == "Core (Tctl/Tdie)"))
+                            {
+                                return j;
+                            }
+
+                            // if (hardware.Sensors[j].Name.Contains("Core"))
+                            // {
+                            //     CPUTemperatureIndex_Safe=j;
+                            // }
+                        }
+                    }
+                }
+            }
+        }
+        return CPUTemperatureIndex_Safe;
+    }
+
+
+    public float GetCPUUtilization(IComputer Computer, int GetCPUUtilizationIndex)
+    {
+        return (float)Computer.Hardware[0].Sensors[GetCPUUtilizationIndex].Value;
+    }
+    public int GetCPUUtilizationIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if (hardware.HardwareType == HardwareType.Cpu)
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        //找到温度传感器
+
+                        if (hardware.Sensors[j].Name == "CPU Total")
+                        {
+                            if (hardware.Sensors[j].SensorType == SensorType.Load)
+                            {
+                                return j;
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+
+    public float GetGPUPower(IComputer Computer, int GPUPowerIndex)
+    {
+        return (float)Computer.Hardware[1].Sensors[GPUPowerIndex].Value;
+    }
+    public int GetGPUPowerIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if ((hardware.HardwareType == HardwareType.GpuNvidia) || (hardware.HardwareType == HardwareType.GpuIntel) || (hardware.HardwareType == HardwareType.GpuAmd))
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        if (hardware.Sensors[j].SensorType == SensorType.Power)
+                        {
+                            if ((hardware.Sensors[j].Name == "GPU Package") || (hardware.Sensors[j].Name == "GPU Power"))
+                            {
+                                return j;
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+    public float GetGPUClock(IComputer Computer, int GPUClockIndex)
+    {
+
+        return (float)Computer.Hardware[1].Sensors[GPUClockIndex].Value;
+    }
+    public int GetGPUClockIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if ((hardware.HardwareType == HardwareType.GpuNvidia) || (hardware.HardwareType == HardwareType.GpuIntel) || (hardware.HardwareType == HardwareType.GpuAmd))
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        if (hardware.Sensors[j].SensorType == SensorType.Clock)
+                        {
+                            if (hardware.Sensors[j].Name == "GPU Core")
+                            {
+                                return j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+    public int UpdateGPUData(IComputer Computer)
+    {
+        Computer.Hardware[1].Update();
+        return 1;
+    }
+    public float GetGPUTemperature(IComputer Computer, int GPUTemperatureIndex)
+    {
+        return (float)Computer.Hardware[1].Sensors[GPUTemperatureIndex].Value;
+    }
+    public int GetGPUTemperatureIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if ((hardware.HardwareType == HardwareType.GpuNvidia) || (hardware.HardwareType == HardwareType.GpuIntel) || (hardware.HardwareType == HardwareType.GpuAmd))
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        //找到温度传感器
+
+                        if (hardware.Sensors[j].SensorType == SensorType.Temperature)
+                        {
+                            if (hardware.Sensors[j].Name == "GPU Hot Spot")
+                            {
+                                return j;
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public float GetGPUUtilization(IComputer Computer, int GetGPUUtilizationIndex)
+    {
+        return (float)Computer.Hardware[1].Sensors[GetGPUUtilizationIndex].Value;
+    }
+    public int GetGPUUtilizationIndex()
+    {
+        // using StringWriter w = new(CultureInfo.InvariantCulture);
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                if ((hardware.HardwareType == HardwareType.GpuNvidia) || (hardware.HardwareType == HardwareType.GpuIntel) || (hardware.HardwareType == HardwareType.GpuAmd))
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        if (hardware.Sensors[j].SensorType == SensorType.Load)
+                        {
+                            if ((hardware.Sensors[j].Name == "GPU Core") || (hardware.Sensors[j].Name == "D3D 3D") && (hardware.HardwareType == HardwareType.GpuIntel))
+                            {
+                                return j;
+                            }
+                        }
+                    }
+            }
+        }
+        return -1;
+    }
+
+
+    public float GetVramUtilization(IComputer Computer, int GetVramUsedIndex)
+    {
+        return (float)Computer.Hardware[1].Sensors[GetVramUsedIndex].Value;
+    }
+    public int GetVramUsedIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if ((hardware.HardwareType == HardwareType.GpuNvidia) || (hardware.HardwareType == HardwareType.GpuIntel) || (hardware.HardwareType == HardwareType.GpuAmd))
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        if (hardware.Sensors[j].SensorType == SensorType.SmallData)
+                        {
+                            if ((hardware.Sensors[j].Name == "GPU Memory Used") || (hardware.Sensors[j].Name == "D3D Shared Memory Used") && (hardware.HardwareType == HardwareType.GpuIntel))
+                            {
+                                _VramUsedIndex = j;
+                                return j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public int GetVramFreeIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if ((hardware.HardwareType == HardwareType.GpuNvidia) || (hardware.HardwareType == HardwareType.GpuIntel) || (hardware.HardwareType == HardwareType.GpuAmd))
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        if (hardware.Sensors[j].SensorType == SensorType.SmallData)
+                        {
+                            if ((hardware.Sensors[j].Name == "GPU Memory Free") || (hardware.Sensors[j].Name == "D3D Shared Memory Free"))
+                            {
+                                return j;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+    public int GetVramTotalIndex()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                //w.WriteLine(hardware.Identifier);
+                if ((hardware.HardwareType == HardwareType.GpuNvidia) || (hardware.HardwareType == HardwareType.GpuIntel) || (hardware.HardwareType == HardwareType.GpuAmd))
+                {
+                    for (int j = 0; j < hardware.Sensors.Length; j++)
+                    {
+                        //找到温度传感器
+
+                        if (hardware.Sensors[j].Name == "GPU Memory Total")
+                        {
+                            if (hardware.Sensors[j].SensorType == SensorType.SmallData)
+                            {
+                                _VramTotalIndex = j;
+                                return j;
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+
+    // public float GetiGpuUsage(string D3DDisplayDeviceIdentifier)
+    // {
+    //     //if (D3DDisplayDevice.GetDeviceInfoByIdentifier(D3DDisplayDeviceIdentifier, out D3DDisplayDevice.D3DDeviceInfo deviceInfo))
+    //     //{
+    //     //int i = 0;
+    //     //deviceInfo.Nodes[1];
+    //     //D3DDisplayDevice.GetDeviceInfoByIdentifier(D3DDisplayDeviceIdentifier, out D3DDisplayDevice.D3DDeviceInfo deviceInfo);
+    //     //long gpuNodeUsagePrevValue;
+    //     //DateTime gpuNodeUsagePrevTick;
+    //     //foreach (D3DDisplayDevice.D3DDeviceNodeInfo node in deviceInfo.Nodes)
+    //     //{
+
+    //     D3DDisplayDevice.D3DDeviceNodeInfo node = _deviceInfo.Nodes[0];
+
+    //     long runningTimeDiff = node.RunningTime - _gpuNodeUsagePrevValue;
+    //     long timeDiff = node.QueryTime.Ticks - _gpuNodeUsagePrevTick.Ticks;
+
+    //     float gpuNodeUsage = 100f * runningTimeDiff / timeDiff;
+    //     _gpuNodeUsagePrevValue = node.RunningTime;
+    //     _gpuNodeUsagePrevTick = node.QueryTime;
+    //     // }
+
+    //     return gpuNodeUsage;
+
+    //     //}
+    //     // int i = -1;
+    //     //return -1;
+    // }
+
+
+
+
+
+
+
+
+
+    public float GetGpuSharedMemoryUsed(string D3DDisplayDeviceIdentifier)
+    {
+        if (D3DDisplayDevice.GetDeviceInfoByIdentifier(D3DDisplayDeviceIdentifier, out D3DDisplayDevice.D3DDeviceInfo deviceInfo))
+        {
+            float gpuSharedMemoryUsage = deviceInfo.GpuSharedUsed;
+            return gpuSharedMemoryUsage;
+        }
+        return 0;
+    }
+
+    public float GetGpuSharedLimit(string D3DDisplayDeviceIdentifier)
+    {
+        if (D3DDisplayDevice.GetDeviceInfoByIdentifier(D3DDisplayDeviceIdentifier, out D3DDisplayDevice.D3DDeviceInfo deviceInfo))
+        {
+            float gpuSharedMemoryUsage = deviceInfo.GpuSharedLimit;
+            return gpuSharedMemoryUsage;
+        }
+        return 0;
+    }
+
+    public string GetD3DDisplayDeviceIdentifier(int index)
+    {
+        _D3DDisplayDeviceIdentifier = D3DDisplayDevice.GetDeviceIdentifiers()[index];
+        return _D3DDisplayDeviceIdentifier;
+    }
+
+
+    public string[] GetSmartData()
+    {
+        List<string> SmartDataList = new List<string>();
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                if (hardware.HardwareType == HardwareType.Storage)
+                {
+                    SmartDataList.Add(hardware.GetReport());
+                }
+            }
+        }
+        string[] SmartData = new string[SmartDataList.Count];
+        for (int i = 0; i < SmartDataList.Count; i++)
+        {
+            SmartData[i] = SmartDataList[i];
+        }
+
+        return SmartData;
+    }
+
+    public string GetMotherboardInfo()
+    {
+        foreach (IGroup group in _groups)
+        {
+            foreach (IHardware hardware in group.Hardware)
+            {
+                if (hardware.HardwareType == HardwareType.Motherboard)
+                {
+                    return hardware.GetReport();
+                }
+            }
+        }
+        return "-1";
+    }
+
+    public string GetCpuInfo()
+    {
+        return _Computer.Hardware[0].GetReport();
+    }
+
+    public string GetCPUIDInfo()
+    {
+        return _groups[0].GetReport();
+    }
+
+    public string GetGPUInfo()
+    {
+        return _Computer.Hardware[1].GetReport();
+    }
+
+    public string GetD3DInfo()
+    {
+        foreach (IGroup group in _groups)
+        {
+            String Report = group.GetReport();
+            if (Report.Contains("Intel GPU (D3D)"))
+            {
+                return Report;
+            }
+        }
+        return "-1";
+    }
+
 }
